@@ -1,0 +1,10 @@
+# config フォルダは丸ごと Git 管理外（機密は GitHub Secret でのみ扱う）
+config/
+
+# 状態ファイル（テスト用）
+state.test.json
+
+# その他
+__pycache__/
+*.pyc
+.env

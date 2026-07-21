@@ -1,0 +1,51 @@
+name: Apple Refurb Stock Check
+
+# 5分ごとに実行（GitHub Actions の cron 最短間隔）。
+# 注意: スケジュール実行は混雑時に遅延・スキップされることがある。
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}   # 手動実行も可能にする
+
+# state.json をコミットで書き戻すために書き込み権限を付与
+permissions:
+  contents: write
+
+# 多重起動を防ぐ（前回がまだ動いていたらスキップ）
+concurrency:
+  group: stock-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run stock check
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NOTIFY_TO: ${{ secrets.NOTIFY_TO }}
+        run: python notifier.py
+
+      - name: Commit state if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain state.json)" ]; then
+            git add state.json
+            git commit -m "chore: update stock state [skip ci]"
+            git push
+          else
+            echo "No state change."
+          fi
