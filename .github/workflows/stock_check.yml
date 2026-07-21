@@ -1,17 +1,17 @@
 name: Apple Refurb Stock Check
 
 # 5分ごとに実行（GitHub Actions の cron 最短間隔）。
-# 注意: スケジュール実行は混雑時に遅延・スキップされることがある。
+# 注意: スケジュール実行は混雑時に数分〜数十分遅延することがある。
 on:
   schedule:
     - cron: "*/5 * * * *"
-  workflow_dispatch: {}   # 手動実行も可能にする
+  workflow_dispatch: {}   # Actionsタブから手動実行も可能
 
 # state.json をコミットで書き戻すために書き込み権限を付与
 permissions:
   contents: write
 
-# 多重起動を防ぐ（前回がまだ動いていたらスキップ）
+# 多重起動を防ぐ（前回実行が残っていたら待つ）
 concurrency:
   group: stock-check
   cancel-in-progress: false
@@ -31,13 +31,24 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run stock check
+      # Secret（CONFIG_JSON）から config/config.json を生成する。
+      # config.json は機密を含むためリポジトリにはコミットせず、
+      # GitHub の暗号化 Secret に中身を丸ごと保管しておく方式。
+      - name: Generate config.json from secret
+        run: |
+          mkdir -p config
+          printf '%s' "$CONFIG_JSON" > config/config.json
         env:
-          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          NOTIFY_TO: ${{ secrets.NOTIFY_TO }}
-        run: python notifier.py
+          CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
 
+      - name: Run stock check
+        run: |
+          cd script
+          python notifier.py
+
+      # 「前回の在庫状態」を次回実行に引き継ぐため、
+      # state.json に変化があればコミットして書き戻す。
+      # [skip ci] を付けているので、このコミットで再実行はされない。
       - name: Commit state if changed
         run: |
           git config user.name "github-actions[bot]"
@@ -45,6 +56,7 @@ jobs:
           if [ -n "$(git status --porcelain state.json)" ]; then
             git add state.json
             git commit -m "chore: update stock state [skip ci]"
+            git pull --rebase origin ${GITHUB_REF_NAME}
             git push
           else
             echo "No state change."
