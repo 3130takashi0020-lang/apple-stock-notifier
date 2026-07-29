@@ -1,10 +1,10 @@
 {
-  "iPhone 16 128GB ブラック": true,
-  "iPhone 16 128GB ホワイト": true,
+  "iPhone 16 128GB ブラック": false,
+  "iPhone 16 128GB ホワイト": false,
   "iPhone 16 128GB ティール": false,
   "iPhone 16 128GB ウルトラマリン": false,
   "iPhone 16 256GB ブラック": false,
-  "iPhone 16 256GB ホワイト": true,
+  "iPhone 16 256GB ホワイト": false,
   "iPhone 16 256GB ティール": false,
   "iPhone 16 256GB ウルトラマリン": false
 }
